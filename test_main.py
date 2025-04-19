@@ -1,6 +1,7 @@
 import unittest
 import sqlite3
 import os
+import time
 from unittest.mock import patch, MagicMock
 import main
 import logging
@@ -30,14 +31,20 @@ class TestWeatherBot(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_db_creation(self):
-        if os.path.exists("weatherDB.db"):
-            os.remove("weatherDB.db")
+        # Попробуем завершить все соединения и удалить БД
+        for _ in range(5):
+            try:
+                if os.path.exists("weatherDB.db"):
+                    os.remove("weatherDB.db")
+                break
+            except PermissionError:
+                time.sleep(0.1)
 
         main.init_db()
 
+        # Проверим, что таблица создана
         conn = sqlite3.connect("weatherDB.db")
         cur = conn.cursor()
-
         cur.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
         )
@@ -51,7 +58,7 @@ class TestWeatherBot(unittest.TestCase):
         message = MagicMock()
         message.chat.id = 12345
 
-        main.main(message)
+        main.start_command(message)
 
         mock_send.assert_called_once_with(
             12345, "Привет, введи город для получения погоды:"
@@ -73,12 +80,15 @@ class TestWeatherBot(unittest.TestCase):
 
         main.get_weather(message)
 
-        mock_reply.assert_called_once()
+        mock_reply.assert_called_once_with(
+            message, "Сейчас погода в городе Moscow: 10°C"
+        )
         mock_send.assert_called_once()
 
     def test_logging_on_error(self):
+        # Очистим лог
         if os.path.exists("error.log"):
-            with open("error.log", "w", encoding="utf-8") as f:
+            with open("error.log", "w", encoding="utf-8", errors="ignore") as f:
                 f.truncate(0)
 
         message = MagicMock()
@@ -90,7 +100,8 @@ class TestWeatherBot(unittest.TestCase):
 
         self.assertTrue(os.path.exists("error.log"))
 
-        with open("error.log", "r", encoding="cp1251") as f:
+        # Прочитаем лог как cp1251 (возможно, Windows записывает именно так)
+        with open("error.log", "r", encoding="cp1251", errors="ignore") as f:
             log_contents = f.read()
             self.assertIn("get_weather", log_contents)
 

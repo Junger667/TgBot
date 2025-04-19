@@ -4,13 +4,11 @@ import json
 import sqlite3
 import logging
 
-
 logging.basicConfig(
     filename="error.log",
     level=logging.ERROR,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
-
 
 bot = telebot.TeleBot("7609487550:AAE937plObNvRUXLoMLlhoTRvbMrSiKcjVM")
 API = "77d7a63614b441a59a076076ce459d38"
@@ -18,14 +16,12 @@ API = "77d7a63614b441a59a076076ce459d38"
 
 def init_db():
     try:
-        conn = sqlite3.connect("weatherDB.db")
-        cur = conn.cursor()
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, "
-            "telegram_id INTEGER, city TEXT)"
-        )
-        conn.commit()
-        conn.close()
+        with sqlite3.connect("weatherDB.db") as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "telegram_id INTEGER, city TEXT)"
+            )
     except Exception as e:
         logging.error(f"[init_db] Ошибка: {e}")
 
@@ -34,7 +30,7 @@ init_db()
 
 
 @bot.message_handler(commands=["start"])
-def main(message):
+def start_command(message):
     try:
         bot.send_message(message.chat.id, "Привет, введи город для получения погоды:")
     except Exception as e:
@@ -52,16 +48,16 @@ def get_weather(message):
         if res.status_code == 200:
             data = json.loads(res.text)
             temp = data["main"]["temp"]
-            bot.reply_to(message, f"Сейчас погода в городе {city.title()}: {temp}°C")
+            reply_text = f"Сейчас погода в городе {city.title()}: {temp}°C"
 
-            conn = sqlite3.connect("weatherDB.db")
-            cur = conn.cursor()
-            cur.execute(
-                "INSERT INTO users (telegram_id, city) VALUES (?, ?)",
-                (message.from_user.id, city),
-            )
-            conn.commit()
-            conn.close()
+            bot.reply_to(message, reply_text)
+
+            with sqlite3.connect("weatherDB.db") as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO users (telegram_id, city) VALUES (?, ?)",
+                    (message.from_user.id, city),
+                )
 
             markup = telebot.types.InlineKeyboardMarkup()
             markup.add(
@@ -79,11 +75,10 @@ def get_weather(message):
 @bot.callback_query_handler(func=lambda call: call.data == "users")
 def show_users(call):
     try:
-        conn = sqlite3.connect("weatherDB.db")
-        cur = conn.cursor()
-        cur.execute("SELECT telegram_id, city FROM users")
-        rows = cur.fetchall()
-        conn.close()
+        with sqlite3.connect("weatherDB.db") as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT telegram_id, city FROM users")
+            rows = cur.fetchall()
 
         if rows:
             text = "Список пользователей и их городов:\n\n"

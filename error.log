@@ -1,1 +1,1 @@
-2025-04-18 16:23:44,326 - ERROR - [get_weather] Ошибак:'NoneType' object has no attribute 'strip'
+2025-04-19 16:16:47,045 - ERROR - [get_weather] Ошибка: 'NoneType' object has no attribute 'strip'
