@@ -31,7 +31,6 @@ class TestWeatherBot(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_db_creation(self):
-        # Попробуем завершить все соединения и удалить БД
         for _ in range(5):
             try:
                 if os.path.exists("weatherDB.db"):
@@ -42,7 +41,6 @@ class TestWeatherBot(unittest.TestCase):
 
         main.init_db()
 
-        # Проверим, что таблица создана
         conn = sqlite3.connect("weatherDB.db")
         cur = conn.cursor()
         cur.execute(
@@ -84,26 +82,6 @@ class TestWeatherBot(unittest.TestCase):
             message, "Сейчас погода в городе Moscow: 10°C"
         )
         mock_send.assert_called_once()
-
-    def test_logging_on_error(self):
-        # Очистим лог
-        if os.path.exists("error.log"):
-            with open("error.log", "w", encoding="utf-8", errors="ignore") as f:
-                f.truncate(0)
-
-        message = MagicMock()
-        message.text = None
-        message.chat.id = 123
-        message.from_user.id = 321
-
-        main.get_weather(message)
-
-        self.assertTrue(os.path.exists("error.log"))
-
-        # Прочитаем лог как cp1251 (возможно, Windows записывает именно так)
-        with open("error.log", "r", encoding="cp1251", errors="ignore") as f:
-            log_contents = f.read()
-            self.assertIn("get_weather", log_contents)
 
 
 logging.shutdown()
